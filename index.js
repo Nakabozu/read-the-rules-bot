@@ -218,9 +218,9 @@ client.on(Events.MessageCreate, async (message) => {
     //#region Duplicate Posts
     if (
       nodupeChannels.includes(channel?.id)
-      // && !message?.member
-      // ?.permissionsIn(message?.channel)
-      // ?.has(PermissionFlagsBits.Administrator)
+      && !message?.member
+      ?.permissionsIn(message?.channel)
+      ?.has(PermissionFlagsBits.Administrator)
     ) {
       // console.log(
       //   `${mT}Checking for duplicate posts in ${buT}${message?.channel?.name} (${message?.channel?.id})${mT}!${ansiR}`
