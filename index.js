@@ -13,15 +13,17 @@ const {
 } = require("discord.js");
 const { initializeDb, getAllNoDupes, getAllStickies } = require("./db.js");
 const token = process.env.TOKEN;
-let isDeletingDupePosts = false;
-let isDeletingLastSticky = false;
 
 //#endregion
-//#region Initialize Db
+//#region Initialization
 /** @type {string[]} */
 let nodupeChannels = [];
 /** @type {{channelId: string, message: string}[]} */
 let currentStickies = [];
+/** @type {string[]} */
+let deleteMessageQueue = [];
+let isStickyQueued = false;
+
 initializeDb();
 getAllNoDupes((nodupes) => {
   nodupeChannels = nodupes.map((nodupeObject) => nodupeObject?.channelId);
@@ -97,7 +99,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         );
         currentStickies.push({
           channelId: interaction?.channel?.id,
-          message: interaction?.options?.getString("message"),
+          message: interaction?.options
+            ?.getString("message")
+            .split("\\n")
+            .join("\n"),
         });
       } else if (interaction.commandName === "unsticky") {
         currentStickies = currentStickies.filter(
@@ -147,89 +152,118 @@ client.on(Events.MessageCreate, async (message) => {
     );
     if (stickyMsg || nodupeChannels.includes(channel?.id)) {
       // Fetch up to 100 messages before the current message in the channel
-      last100Messages = await channel.messages.fetch({
-        limit: 100,
-        before: message.id,
-      });
+      last100Messages = await channel.messages
+        .fetch({
+          limit: 100,
+          before: message.id,
+        })
+        .then((messages) =>
+          messages.filter(
+            (message) => !deleteMessageQueue.includes(message?.id)
+          )
+        );
     }
-    if (stickyMsg) {
-      //   console.debug(
-      //     `${mT}Found a sticky for channel ${buT}${
-      //       message?.channel?.name
-      //     }${mT} with the contents ${cT}${JSON.stringify(
-      //       stickyMsg
-      //     )}${mT}.${ansiR}`
-      //   );
-      const lastSticky = last100Messages?.filter(
-        (msg) => msg?.author?.bot && msg?.content === stickyMsg?.message
-      );
-      if (lastSticky && lastSticky.size > 0 && !isDeletingLastSticky) {
-        isDeletingLastSticky = true;
+    if (stickyMsg && !isStickyQueued) {
+      isStickyQueued = true;
+      // console.debug(
+      //   `${mT}Found a sticky for channel ${buT}${
+      //     message?.channel?.name
+      //   }${mT} with the contents ${cT}${JSON.stringify(
+      //     stickyMsg
+      //   )}${mT}.${ansiR}`
+      // );
+      const oldStickiesToDelete = last100Messages?.filter((oldStickyMsg) => {
+        if (
+          oldStickyMsg?.author?.bot &&
+          oldStickyMsg?.content === stickyMsg?.message &&
+          !deleteMessageQueue.includes(oldStickyMsg?.id)
+        ) {
+          deleteMessageQueue.push(oldStickyMsg?.id);
+          return true;
+        }
+        return false;
+      });
+      if (oldStickiesToDelete && oldStickiesToDelete.size > 0) {
         // Check if the messages exist and can be deleted before attempting
-        await Promise.all(
-          lastSticky.map((stickyToDelete) => {
-            if (stickyToDelete.deletable) {
-              return stickyToDelete
-                .delete()
-                .catch((e) =>
-                  console.error("Failed to delete sticky message:", e)
+        oldStickiesToDelete.forEach((stickyToDelete) => {
+          if (stickyToDelete.deletable) {
+            stickyToDelete
+              .delete()
+              .catch((e) =>
+                console.error("Failed to delete sticky message:", e)
+              )
+              .finally(() => {
+                const indexOfDeletedMessage = deleteMessageQueue.indexOf(
+                  message?.id
                 );
-            }
-            return "NOT DELETABLE";
-          })
-        )
-          .catch((err) => {
-            console.log("Error deleting one of the sticky messages", err);
-          })
-          .finally(() => {
-            isDeletingLastSticky = false;
-          });
+                if (indexOfDeletedMessage >= 0) {
+                  deleteMessageQueue.splice(indexOfDeletedMessage, 1);
+                }
+              });
+          }
+        });
       }
-      message.channel.send(stickyMsg?.message);
+      message.channel
+        .send(stickyMsg?.message)
+        .catch((err) => {
+          console.error(
+            "Wow!  This is a rare one...  Couldn't send your sticky message."
+          );
+        })
+        .finally(() => {
+          isStickyQueued = false;
+        });
     }
     //#endregion
     //#region Duplicate Posts
     if (
-      nodupeChannels.includes(channel?.id) &&
-      !message?.member
-        ?.permissionsIn(message?.channel)
-        ?.has(PermissionFlagsBits.Administrator)
+      nodupeChannels.includes(channel?.id)
+      // && !message?.member
+      // ?.permissionsIn(message?.channel)
+      // ?.has(PermissionFlagsBits.Administrator)
     ) {
-      //console.log(`${gT}Checking for duplicate posts in ${buT}${message?.channel?.name} (${message?.channel?.id})${gT}!${ansiR}`);
+      // console.log(
+      //   `${mT}Checking for duplicate posts in ${buT}${message?.channel?.name} (${message?.channel?.id})${mT}!${ansiR}`
+      // );
 
-      // Check if any of those last100Messages are from the same user
+      // Check if any of those last100Messages are from the same user and aren't queued for deletion already
       const userMessages = last100Messages.filter(
-        (msg) => msg?.author?.id === userId
+        (usrMsg) =>
+          {if(usrMsg?.author?.id === userId && !deleteMessageQueue.includes(usrMsg?.id)){
+            deleteMessageQueue.push(usrMsg?.id)
+            return true;
+          }
+        return false;}
       );
 
-      if (isDeletingDupePosts) {
-        return;
-      }
       if (userMessages.size === 0) {
         // console.log(`${gT}This is the first message in the channel from user ${userId}.${ansiR}`);
       } else {
-        isDeletingDupePosts = true;
-        await Promise.all(
-          userMessages.map((message) => {
-            if (message?.deletable)
-              return message?.delete().catch((err) => {
+        userMessages.map((message) => {
+          console.log(
+            `${mT}Attempting to ${rT}DELETE${mT} message ${buT}${message?.id}${mT}.${ansiR}`
+          );
+          if (message?.deletable)
+            message
+              ?.delete()
+              .catch((err) => {
                 console.error(
-                  "Couldn't delete the user's duplicate messages",
+                  "Couldn't delete the user's duplicate message",
                   err
                 );
+              })
+              .finally(() => {
+                console.log(
+                  `${rT}REMOVING${mT} message ${buT}${message?.id}${mT} from the delete queue.${ansiR}`
+                );
+                const indexOfDeletedMessage = deleteMessageQueue.indexOf(
+                  message?.id
+                );
+                if (indexOfDeletedMessage >= 0) {
+                  deleteMessageQueue.splice(indexOfDeletedMessage, 1);
+                }
               });
-            return "NOT DELETABLE";
-          })
-        )
-          .catch((err) => {
-            console.log(
-              "Error deleting one of the user's duplicate messages",
-              err
-            );
-          })
-          .finally(() => {
-            isDeletingDupePosts = false;
-          });
+        });
       }
     }
     //#endregion
@@ -238,5 +272,3 @@ client.on(Events.MessageCreate, async (message) => {
   }
 });
 //#endregion
-
-module.exports = { nodupeChannels, currentStickies };

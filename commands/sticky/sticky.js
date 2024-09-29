@@ -23,6 +23,7 @@ module.exports = {
 			return;
 		}
 		let messageToSticky = interaction?.options?.getString("message");
+		messageToSticky = messageToSticky.split('\\n').join('\n')
 		if(!messageToSticky){
 			await interaction.reply({
 				content: 'I have no idea how you managed this, but you tried to sticky nothing?', 
