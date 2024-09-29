@@ -6,7 +6,7 @@ module.exports = {
 		.setName('ping')
 		.setDescription('Replies with Pong!'),
 	async execute(interaction) {
-		// INTERACTION TAKE TOOK LONG?  YOU CAN DEFER FOR A LITTLE LONGER!
+		// INTERACTION TAKE TOO LONG?  YOU CAN DEFER FOR A LITTLE LONGER!
 		// await interaction.deferReply({
 		// 	ephemeral: true // Makes the deferred reply only visible to the user that triggered it
 		// });
