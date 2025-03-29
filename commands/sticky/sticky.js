@@ -23,7 +23,7 @@ module.exports = {
 			return;
 		}
 		let messageToSticky = interaction?.options?.getString("message");
-		messageToSticky = messageToSticky.split('\\n').join('\n')
+		messageToSticky = messageToSticky.split('\\n').join('\n').trim();
 		if(!messageToSticky){
 			await interaction.reply({
 				content: 'I have no idea how you managed this, but you tried to sticky nothing?', 
@@ -32,6 +32,7 @@ module.exports = {
 			});
 			return;
 		}
+		// console.log(`Sticky message for channel ${interaction?.channel?.id}:\n${messageToSticky}`);
 		addSticky(interaction?.channel?.id, messageToSticky);
 		await interaction.reply({
 			content: messageToSticky, 

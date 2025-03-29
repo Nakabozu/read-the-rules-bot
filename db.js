@@ -130,6 +130,53 @@ function deleteNoDupe(channelId) {
   });
 }
 
+async function dbDump() {
+  let onemessageQuery = `SELECT channelId AS "Channel", count(channelId) AS "Count" FROM onemessage GROUP BY channelId`;
+  let stickyQuery = `SELECT channelId AS "Channel", count(channelId) AS "Count" FROM stickies GROUP BY channelId`;
+  let finalResult = "";
+  await fetchAll(db, onemessageQuery, []).then((onemessageRows) => {
+    finalResult += "No-Duplicate Channels:\n```";
+    if (onemessageRows.length === 0) {
+      finalResult += "  None\n";
+    } else {
+      onemessageRows.forEach((row) => {
+        finalResult += `  ${JSON.stringify(row)}\n`;
+      });
+    }
+  });
+  finalResult += "```\n";
+  await fetchAll(db, stickyQuery, []).then((stickyRows) => {
+    finalResult += "Stickies:\n```";
+    if (stickyRows.length === 0) {
+      finalResult += "  None\n";
+    } else {
+      stickyRows.forEach((row) => {
+        finalResult += `  ${JSON.stringify(row)}\n`;
+      });
+    }
+  });
+  finalResult += "```";
+  return finalResult;
+}
+
+const fetchAll = async (db, sql, params) => {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) reject(err);
+      resolve(rows);
+    });
+  });
+};
+
+const fetchFirst = async (db, sql, params) => {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => {
+      if (err) reject(err);
+      resolve(row);
+    });
+  });
+};
+
 module.exports = {
   db,
   initializeDb,
@@ -141,4 +188,5 @@ module.exports = {
   getNoDupe,
   addNoDup,
   deleteNoDupe,
+  dbDump,
 };

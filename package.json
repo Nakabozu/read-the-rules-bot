@@ -2,9 +2,9 @@
   "name": "hazpin-hotel-bot",
   "version": "1.0.0",
   "description": "A bot for the Hazpin Hotel server.",
-  "main": "index.js",
+  "main": "hazpin.js",
   "scripts": {
-    "dev": "node index.js",
+    "dev": "node hazpin.js",
     "deploy": "node deploy-commands.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

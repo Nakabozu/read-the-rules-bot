@@ -159,6 +159,7 @@ client.on(Events.MessageCreate, async (message) => {
         })
         .then((messages) =>
           messages.filter(
+            // Message already queued for deletion.  Don't worry about it.
             (message) => !deleteMessageQueue.includes(message?.id)
           )
         );
@@ -175,7 +176,7 @@ client.on(Events.MessageCreate, async (message) => {
       const oldStickiesToDelete = last100Messages?.filter((oldStickyMsg) => {
         if (
           oldStickyMsg?.author?.bot &&
-          oldStickyMsg?.content === stickyMsg?.message &&
+          oldStickyMsg?.content?.trim() === stickyMsg?.message?.trim() &&
           !deleteMessageQueue.includes(oldStickyMsg?.id)
         ) {
           deleteMessageQueue.push(oldStickyMsg?.id);
