@@ -1,7 +1,7 @@
 //#region Imports
 const fs = require("node:fs");
 const path = require("node:path");
-const { gT, ansiR, rT, buT, mT, cT } = require("./ansiCodes.js");
+const { gT, ansiR, rT, buT, mT, cT, buB, wT } = require("./ansiCodes.js");
 require("dotenv").config();
 const {
   Client,
@@ -25,10 +25,15 @@ let deleteMessageQueue = [];
 let isStickyQueued = false;
 
 initializeDb();
+
 getAllNoDupes((nodupes) => {
+  console.debug(`${gT}NODUPE INITIALIZATION COMPLETE!${ansiR}:`, nodupes);
+
   nodupeChannels = nodupes.map((nodupeObject) => nodupeObject?.channelId);
 });
 getAllStickies((stickies) => {
+  console.debug(`${gT}STICKY INITIALIZATION COMPLETE!${ansiR}:`, stickies);
+
   currentStickies = [...stickies];
 });
 //#endregion
@@ -104,16 +109,32 @@ client.on(Events.InteractionCreate, async (interaction) => {
             .split("\\n")
             .join("\n"),
         });
+        // console.debug(
+        //   `${buB}${wT}currentStickies${ansiR}${mT} was updated.${ansiR}`,
+        //   currentStickies
+        // );
       } else if (interaction.commandName === "unsticky") {
         currentStickies = currentStickies.filter(
           (sticky) => sticky?.channelId !== interaction?.channel?.id
         );
+        // console.debug(
+        //   `${buB}${wT}currentStickies${ansiR}${mT} was updated.${ansiR}`,
+        //   currentStickies
+        // );
       } else if (interaction.commandName === "onemessage") {
         nodupeChannels.push(interaction?.channel?.id);
+        // console.debug(
+        //   `${buB}${wT}nodupeChannels${ansiR}${mT} was updated.${ansiR}`,
+        //   nodupeChannels
+        // );
       } else if (interaction.commandName === "disableonemessage") {
         nodupeChannels = nodupeChannels?.filter(
           (channelId) => channelId !== interaction?.channel?.id
         );
+        // console.debug(
+        //   `${buB}${wT}nodupeChannels${ansiR}${mT} was updated.${ansiR}`,
+        //   nodupeChannels
+        // );
       }
     }
     await command.execute(interaction);
@@ -148,7 +169,10 @@ client.on(Events.MessageCreate, async (message) => {
 
     //#region Sticky Time
     const stickyMsg = currentStickies.find(
-      (sticky) => sticky?.channelId === message?.channel?.id
+      (sticky) =>
+        sticky?.channelId &&
+        message?.channel?.id &&
+        sticky?.channelId === message?.channel?.id
     );
     if (stickyMsg || nodupeChannels.includes(channel?.id)) {
       // Fetch up to 100 messages before the current message in the channel
@@ -218,32 +242,34 @@ client.on(Events.MessageCreate, async (message) => {
     //#endregion
     //#region Duplicate Posts
     if (
-      nodupeChannels.includes(channel?.id)
-      && !message?.member
-      ?.permissionsIn(message?.channel)
-      ?.has(PermissionFlagsBits.Administrator)
+      nodupeChannels.includes(channel?.id) &&
+      !message?.member
+        ?.permissionsIn(message?.channel)
+        ?.has(PermissionFlagsBits.Administrator)
     ) {
       // console.log(
       //   `${mT}Checking for duplicate posts in ${buT}${message?.channel?.name} (${message?.channel?.id})${mT}!${ansiR}`
       // );
 
       // Check if any of those last100Messages are from the same user and aren't queued for deletion already
-      const userMessages = last100Messages.filter(
-        (usrMsg) =>
-          {if(usrMsg?.author?.id === userId && !deleteMessageQueue.includes(usrMsg?.id)){
-            deleteMessageQueue.push(usrMsg?.id)
-            return true;
-          }
-        return false;}
-      );
+      const userMessages = last100Messages.filter((usrMsg) => {
+        if (
+          usrMsg?.author?.id === userId &&
+          !deleteMessageQueue.includes(usrMsg?.id)
+        ) {
+          deleteMessageQueue.push(usrMsg?.id);
+          return true;
+        }
+        return false;
+      });
 
       if (userMessages.size === 0) {
         // console.log(`${gT}This is the first message in the channel from user ${userId}.${ansiR}`);
       } else {
         userMessages.map((message) => {
-          console.log(
-            `${mT}Attempting to ${rT}DELETE${mT} message ${buT}${message?.id}${mT}.${ansiR}`
-          );
+          //   console.log(
+          //     `${mT}Attempting to ${rT}DELETE${mT} message ${buT}${message?.id}${mT} from user ${buT}${message?.member?.nickname}${mT}.${ansiR}`
+          //   );
           if (message?.deletable)
             message
               ?.delete()
