@@ -207,6 +207,7 @@ function setNonoWords(newWords) {
 async function dbDump() {
     let onemessageQuery = `SELECT channelId AS "Channel", count(channelId) AS "Count" FROM onemessage GROUP BY channelId`;
     let stickyQuery = `SELECT channelId AS "Channel", count(channelId) AS "Count" FROM stickies GROUP BY channelId`;
+    let miscQuery = `SELECT * FROM misc`;
     let finalResult = '';
     await fetchAll(db, onemessageQuery, []).then((onemessageRows) => {
         finalResult += 'No-Duplicate Channels:\n```';
@@ -221,6 +222,17 @@ async function dbDump() {
     finalResult += '```\n';
     await fetchAll(db, stickyQuery, []).then((stickyRows) => {
         finalResult += 'Stickies:\n```';
+        if (stickyRows.length === 0) {
+            finalResult += '  None\n';
+        } else {
+            stickyRows.forEach((row) => {
+                finalResult += `  ${JSON.stringify(row)}\n`;
+            });
+        }
+    });
+    finalResult += '```\n';
+    await fetchAll(db, miscQuery, []).then((miscData) => {
+        finalResult += 'Misc:\n```';
         if (stickyRows.length === 0) {
             finalResult += '  None\n';
         } else {
