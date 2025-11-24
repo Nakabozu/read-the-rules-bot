@@ -235,7 +235,7 @@ client.on(Events.MessageCreate, async (message) => {
                 ?.delete()
                 .then(() => {
                     message.channel
-                        .send(`YOU CAN'T SAY ${nonoWord}!`)
+                        .send(`<@${userId}> YOU CAN'T SAY ${nonoWord}!`)
                         .catch((err) => {
                             console.error(
                                 rT +
