@@ -2,6 +2,9 @@ const {
     SlashCommandBuilder,
     ChatInputCommandInteraction,
     PermissionFlagsBits,
+    Client,
+    EmbedBuilder,
+    Message,
 } = require('discord.js');
 const { rT, ansiR } = require('../../ansiCodes');
 
@@ -47,11 +50,26 @@ module.exports = {
         // console.log(`Post message for channel ${interaction?.channel?.id}:\n${messageToPost}`);
         await interaction.channel
             .send(messageToPost)
-            .then(async () => {
+            .then(async (/** @type {Message} */ msg) => {
                 await interaction.reply({
                     content: 'Message posted successfully!',
                     ephemeral: true, // Makes the message only visible to the user that triggered it
                 });
+                const channel = interaction.guild.channels.cache.find(
+                    (ch) => ch.name === 'bot-logs'
+                );
+                const embedReply = new EmbedBuilder()
+                    .setColor('#FF7400')
+                    .setTitle(`An admin used the /post command`)
+                    .setImage('https://i.imgur.com/7cZmf1K.png')
+                    .setDescription(
+                        `**Name**: ${interaction?.user?.username} (${interaction?.user?.id})` +
+                            `\n**Time**: ${new Date()?.toLocaleString?.()}` +
+                            `\n**Channel**:\n<#${interaction?.channel?.id}>` +
+                            `\n**Message Link**: [Jump to message](${msg?.url})`
+                    );
+
+                await channel.send({ embeds: [embedReply] });
             })
             .catch(async (err) => {
                 await interaction.reply({
