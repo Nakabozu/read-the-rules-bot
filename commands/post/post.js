@@ -3,7 +3,6 @@ const {
     ChatInputCommandInteraction,
     PermissionFlagsBits,
 } = require('discord.js');
-const { addSticky } = require('../../db');
 const { rT, ansiR } = require('../../ansiCodes');
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -46,12 +45,23 @@ module.exports = {
             return;
         }
         // console.log(`Post message for channel ${interaction?.channel?.id}:\n${messageToPost}`);
-        addSticky(interaction?.channel?.id, messageToPost);
-        await interaction.channel.send(messageToPost).catch((err) => {
-            console.error(
-                rT + "OH NO! Couldn't post that message!" + ansiR,
-                err
-            );
-        });
+        await interaction.channel
+            .send(messageToPost)
+            .then(async () => {
+                await interaction.reply({
+                    content: 'Message posted successfully!',
+                    ephemeral: true, // Makes the message only visible to the user that triggered it
+                });
+            })
+            .catch(async (err) => {
+                await interaction.reply({
+                    content: `Failed to post the message!\nError: ${err?.message}`,
+                    ephemeral: true, // Makes the message only visible to the user that triggered it
+                });
+                console.error(
+                    rT + "OH NO! Couldn't post that message!" + ansiR,
+                    err
+                );
+            });
     },
 };
