@@ -4,6 +4,7 @@ const {
     PermissionFlagsBits,
 } = require('discord.js');
 const { addSticky } = require('../../db');
+const { rT, ansiR } = require('../../ansiCodes');
 
 //////////////////////////////////////////////////////////////////////////////////////
 //                           SLASH COMMAND DOCUMENTATION                            //
@@ -46,8 +47,11 @@ module.exports = {
         }
         // console.log(`Post message for channel ${interaction?.channel?.id}:\n${messageToPost}`);
         addSticky(interaction?.channel?.id, messageToPost);
-        await interaction.reply({
-            content: messageToPost,
+        await interaction.channel.send(messageToPost).catch((err) => {
+            console.error(
+                rT + "OH NO! Couldn't post that message!" + ansiR,
+                err
+            );
         });
     },
 };
